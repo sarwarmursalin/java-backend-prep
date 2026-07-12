@@ -1,6 +1,9 @@
 package com.mursalin.cheque;
 
 import com.mursalin.cheque.model.Cheque;
+import com.mursalin.cheque.io.ChequeReader;
+import com.mursalin.cheque.io.ReportWriter;
+import java.nio.file.Path;
 
 import com.mursalin.cheque.fraud.FraudRules;
 import com.mursalin.cheque.validation.Validator;
@@ -14,15 +17,8 @@ import java.util.Map;
 
 public class Main {
 
-    public static void main(String[] args) {
-        List<Cheque> cheques = List.of(
-            new Cheque("CHQ-001", "Alice Corp",   "Bob LLC",        new BigDecimal("5000.00"), "021000021", LocalDate.of(2024, 3, 15)),
-            new Cheque("CHQ-001", "Golam Corp",   "Bob LLC",        new BigDecimal("4351.00"), "021000021", LocalDate.of(2024, 4, 12)),
-            new Cheque("CHQ-002", "Exon Corp",    "Bob LLC",        new BigDecimal("9950.00"), "021000021", LocalDate.of(2024, 6,  4)),
-            new Cheque("CHQ-003", "Neson Corp",   "Shell Corp Ltd", new BigDecimal("1248.00"), "021000021", LocalDate.of(2024, 7, 16)),
-            new Cheque("CHQ-004", "Logi Corp",    "Bob LLC",        new BigDecimal("3400.00"), "021000021", LocalDate.of(2023, 1, 21)),
-            new Cheque("CHQ-005", "Tanson Corp",  "Bob LLC",        new BigDecimal("1200.00"), "021000021", LocalDate.of(2025, 3, 15))
-        );
+    public static void main(String[] args) throws Exception {
+        List<Cheque> cheques = new ChequeReader().read(Path.of("inbox/cheques.csv"));
 
         Validator validator = new Validator();
         FraudRules fraudRules = new FraudRules();
@@ -60,5 +56,10 @@ public class Main {
 
         System.out.println("\nREJECTED:");
         rejected.forEach(c -> System.out.println("  " + c.id() + " -> " + validator.validate(c)));
+
+
+        new ReportWriter(validator, fraudRules)
+                .write(Path.of("reports/summary.txt"), clean, flagged, rejected, duplicateIds);
+        System.out.println("\nReport written to reports/summary.txt");
     }
 }
