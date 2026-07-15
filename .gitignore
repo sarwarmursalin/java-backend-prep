@@ -3,3 +3,4 @@
 target/
 *.class
 reports/
+.DS_Store
