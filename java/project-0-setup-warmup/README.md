@@ -28,7 +28,7 @@
 ## Milestone 1 — Run the starter (~15 min)
 This folder is already a runnable Maven project.
 ```bash
-cd java-backend-prep/java/project-0-setup-warmup
+cd java-aws-projects/java/project-0-setup-warmup
 mvn -q compile exec:java
 ```
 You should see the demo in `Main.java` run. If it compiles and prints, your toolchain works.

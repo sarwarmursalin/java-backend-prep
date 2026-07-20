@@ -4,3 +4,7 @@ target/
 *.class
 reports/
 .DS_Store
+
+README.md
+java/LEARNING-RESOURCES.md
+aws/course.md
