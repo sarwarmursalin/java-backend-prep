@@ -1,82 +1,51 @@
-# Project 1 — Cheque Processing CLI (Weeks 2–5)
+# Project 1 — Cheque Fraud-Flagging CLI
 
-**Your first portfolio piece.** A command-line tool that ingests a folder of cheque records, validates them, flags suspicious ones with fraud rules, and emits a report — built concurrently so it scales to thousands of files. This mirrors a real financial services domain (fraud detection on financial documents) and gives you a real STAR story.
+## Why I built this
 
-**Why this project:** it forces every Core Java pillar — collections, streams, exceptions, file I/O, concurrency — in service of something interview-worthy, instead of disconnected tutorials.
+After Project 0, I wanted something that forced me through the Core Java pillars that actually come up in backend work — collections, streams, exceptions, file I/O — instead of disconnected tutorials. A cheque-processing tool that reads records, validates them, and flags suspicious ones felt like a real, self-contained domain to build that around, and it mirrors the kind of fraud-detection logic financial-services backends actually run.
 
 ---
 
-## Final spec (what "done" looks like)
-```
-$ java -jar cheque-tool.jar ./inbox --report report.txt --threads 4
-Processed 1,284 cheques from 312 files in 0.8s (4 threads)
-  ✓ 1,201 valid
-  ⚠  71 flagged (see report.txt)
-  ✗ 12 rejected (malformed)
-```
-A `Cheque` has: id, payer, payee, amount, routingNumber, date. The tool:
-- reads CSV and/or JSON files from a folder,
-- validates each field (amount > 0, routing number format, date not in future, required fields present),
-- applies **fraud-flag rules** (e.g. amount just under a reporting threshold like $9,900–$9,999 — "structuring"; duplicate cheque id; payee on a watchlist),
-- processes files **in parallel**, and
-- writes a human-readable report with counts and the reason each cheque was flagged/rejected.
+## What I actually built
 
-## Milestones (build in order — each unlocks a Core Java pillar)
+A `Cheque` record (`id`, `payer`, `payee`, `amount`, `routingNumber`, `date`) with three pieces of logic around it:
 
-### Week 2 — Model & collections
-- [ ] Create a `Cheque` class (immutable: `final` fields, constructor, getters). Consider a Java **record** and learn what it gives you.
-- [ ] Parse a hardcoded list of sample records into `List<Cheque>`.
-- [ ] Detect duplicate cheque ids using a `Map<String, List<Cheque>>` or a `Set`.
-- **Teaches:** `List`/`Set`/`Map`, generics, records, equals/hashCode (duplicate detection makes you *need* it).
+- **`Validator`** (`validation/Validator.java`) — checks a cheque for structural problems: blank id/payer/payee, non-positive amount, a routing number that isn't 9 digits, or a date in the future. Returns a `List<String>` of problems (empty = valid) rather than throwing, so a bad cheque doesn't stop the batch.
+- **`FraudRules`** (`fraud/FraudRules.java`) — three rules checked against an already-valid cheque: `STRUCTURING` (amount between $9,900–$9,999.99, just under the $10,000 reporting threshold), `DUPLICATE_ID` (id seen earlier in the same batch), and `WATCHLIST` (payee matches a hardcoded list of flagged entities). A cheque can trigger more than one flag at once.
+- **`ChequeReader`** (`io/ChequeReader.java`) — reads a CSV file line by line and parses each row into a `Cheque`.
 
-### Week 3 — Validation & streams
-- [ ] A `Validator` that returns the list of problems for a cheque (empty list = valid).
-- [ ] A `FraudRules` component applying the flag rules.
-- [ ] Use the **Stream API** to partition cheques into valid / flagged / rejected and to `groupingBy` reason.
-- **Teaches:** streams (`map/filter/collect/partitioningBy/groupingBy`), lambdas, `Optional`, custom exceptions.
+`Main.java` wires these together: read `inbox/cheques.csv`, use a stream (`groupingBy` + `counting`) to find duplicate ids up front, then `partitioningBy` twice — first into valid/rejected, then the valid ones into clean/flagged — and write a summary report via `ReportWriter` (`io/ReportWriter.java`).
 
-### Week 4 — File I/O & robustness
-- [ ] Read real CSV and JSON files from a folder path (use `java.nio.file.Files`; for JSON add **Jackson** via Maven).
-- [ ] Handle malformed files/rows gracefully — one bad row must not crash the run; collect it as "rejected" with a reason.
-- [ ] Write the report to a file with try-with-resources.
-- **Teaches:** file I/O, `try`-with-resources, checked vs unchecked exceptions, dependency management in Maven.
+**Tests:** 17 JUnit tests across `FraudRulesTest`, `ValidatorTest`, and `ChequeTest` — each fraud rule and each validation check has a dedicated positive and negative case, plus one test confirming a cheque can carry all three flags simultaneously.
 
-### Week 5 — Concurrency
-- [ ] Process files in parallel with an `ExecutorService` (one task per file), collect results with `Future`/`CompletableFuture`.
-- [ ] Make shared counters/collections thread-safe (e.g. `ConcurrentHashMap`, `AtomicInteger`, or merge per-thread results at the end — the cleaner pattern).
-- [ ] Add a `--threads N` flag; measure speedup vs single-threaded.
-- **Teaches:** threads, `ExecutorService`, `Callable`/`Future`, `CompletableFuture`, thread-safety, immutability as a concurrency strategy.
+## How to run it
 
-## ✅ Project 1 cleared when
-- [ ] Runnable fat JAR processes a folder concurrently and writes a report.
-- [ ] One malformed file does not crash the run.
-- [ ] You can explain your concurrency model (why it's thread-safe).
-- [ ] Pushed to GitHub with a README (problem → design → how to run → what you'd improve).
-- [ ] Written up as a **STAR story** in `../../interview-prep/`.
-
-## Interview questions this sets you up to answer
-- "How does a `HashMap` find duplicates — what's `hashCode`/`equals` doing under the hood?"
-- "When would you use a stream vs a loop? When does a stream hurt?"
-- "How did you make the parallel processing thread-safe without locks everywhere?" (immutable results + merge, or concurrent collections)
-- "Checked vs unchecked exceptions — how did you decide which to use for a bad row?"
-- "How would this scale to millions of cheques?" (bounded thread pool, streaming reads, backpressure → segues into your AWS SQS work)
-
-## Architecture (describe-as-diagram)
-```
-./inbox/*.{csv,json}
-   → FileScanner (lists files)
-       → ExecutorService (N threads)
-           → per file: Parser → List<Cheque>
-                         → Validator → problems?
-                         → FraudRules → flags?
-           → ChequeResult (valid | flagged | rejected, with reasons)
-   → ResultAggregator (thread-safe merge)
-       → ReportWriter → report.txt
+```bash
+cd java-aws-projects/java/project-1-cheque-cli
+mvn -q compile exec:java -Dexec.mainClass=com.mursalin.cheque.Main
 ```
 
-## Resources
-- Coding with John — Streams, equals/hashCode.
-- Baeldung — `ExecutorService`, `CompletableFuture`, Jackson basics.
-- Java Brains — concurrency primers.
+This reads `inbox/cheques.csv`, prints a summary to the console, and writes a full report to `reports/summary.txt`.
 
-⬅️ Prev: [Project 0](../project-0-setup-warmup/README.md) ・ ➡️ Next: [Project 2 — Document Metadata API](../project-2-document-api/README.md)
+To run the tests:
+```bash
+mvn test
+```
+
+## What's genuinely not finished here
+
+I want this documented honestly rather than glossed over, since I'll be the one relying on it later:
+
+- **No concurrency.** Everything runs on a single thread. There's no `ExecutorService`/`CompletableFuture` anywhere in the code, despite an earlier commit message calling the concurrency milestone "complete" — that commit message was wrong; the code doesn't back it up.
+- **No CLI arguments.** `Main.java` has the input path (`inbox/cheques.csv`) hardcoded. There's no `--report` or `--threads` flag.
+- **Single file only, CSV only.** It doesn't scan a folder of multiple files, and there's no JSON support — `ChequeReader` only reads one CSV.
+- **An unfinished, undocumented REST layer.** `App.java` and `api/ChequeController.java` add a Spring Boot REST endpoint (`POST /cheques/process`) that duplicates the same validate/flag logic as `Main.java`. I started this as an experiment but never finished or wired it up properly, and it isn't mentioned anywhere else in this project.
+- **Dead code.** There's a second `ReportWriter` class at `report/ReportWriter.java` that just throws `UnsupportedOperationException` — it's not used anywhere; the real one is `io/ReportWriter.java`.
+
+If I pick this project back up, the next real milestone is adding concurrency (`ExecutorService`, one task per file) over a folder of files, plus deciding whether to keep or delete the REST layer rather than leaving it half-built.
+
+## What this taught me
+
+- **Streams over loops** — `partitioningBy`/`groupingBy` made the valid/flagged/rejected split and duplicate-id detection much clearer than manual loops with mutable lists would have been.
+- **`equals`/`hashCode` mattering for real** — duplicate-id detection via a `Set`/`Map` only works correctly because `Cheque` is a record (which generates both for free based on all fields).
+- **Validation returning a list of problems instead of throwing** — this let one bad cheque get reported as "rejected with reasons" instead of crashing the whole batch, which is closer to how a real ingestion pipeline should behave.

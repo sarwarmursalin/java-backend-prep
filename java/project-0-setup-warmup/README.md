@@ -1,67 +1,48 @@
-# Project 0 — Setup & Warmup (Week 1)
+# Project 0 — Bank Account CLI
 
-**Goal:** Get a working Java toolchain and write your first real Java by building a tiny `BankAccount` CLI. This is the "hello, the language is different from Python" project.
+## Why I built this
 
-**You'll build:** a command-line demo that creates accounts, deposits/withdraws money, rejects overdrafts, and prints balances.
-
-**Concepts this teaches (Python → Java map):**
-| Python instinct | Java reality you'll meet here |
-|---|---|
-| `self.balance` | private fields + methods, everything in a class |
-| duck typing | static types, the compiler checks you |
-| `a == b` for value equality | `==` is identity; use `.equals()` for value |
-| `print(...)` | `System.out.println(...)` |
-| `python main.py` | compile + run via Maven (`mvn ...`) |
-| raising `ValueError` | `throw new IllegalArgumentException(...)` |
+I hadn't written real Java before — my background was Python. Before starting anything bigger, I wanted a small, self-contained project to get the toolchain working and feel the actual differences between Python and Java: static types, explicit classes, `==` vs `.equals()`. A tiny `BankAccount` CLI was small enough to finish in one sitting but touches all of that.
 
 ---
 
-## Milestone 0 — Install the toolchain (~45 min)
-1. **JDK 21 (Amazon Corretto)** — AWS-friendly distro.
-   - macOS: `brew install --cask corretto21` (or download from AWS).
-   - Verify: `java -version` → should say 21.
-2. **Maven:** `brew install maven` → verify `mvn -version`.
-3. **IntelliJ IDEA Community Edition** (free) — the standard Java IDE. Open this folder as a Maven project; it auto-detects `pom.xml`.
+## What I actually built
 
-✅ Done when `java -version` and `mvn -version` both print 21-based output.
+A `BankAccount` class (`src/main/java/com/mursalin/warmup/BankAccount.java`) with:
+- private fields `owner` (String) and `balance` (double), set through the constructor, which rejects a null/blank owner with `IllegalArgumentException`.
+- `deposit(double amount)` — rejects non-positive amounts.
+- `withdraw(double amount)` — rejects non-positive amounts and rejects overdrafts (`amount > balance`).
+- `getBalance()`, `getOwner()`, and a `toString()` override.
+- `equals()`/`hashCode()` overridden on `owner` only — two accounts with the same owner are "equal" even with different balances. I did this deliberately so I'd have to actually explain the identity-vs-equality distinction, not just read about it.
 
-## Milestone 1 — Run the starter (~15 min)
-This folder is already a runnable Maven project.
+`Main.java` wires up a small demo: create two accounts, deposit/withdraw on one, trigger an overdraft inside a `try/catch` to show the rejection working, and print `==` vs `.equals()` on two different `BankAccount` instances that share an owner to show the difference concretely.
+
+## How to set up the toolchain
+
+1. **JDK 21 (Amazon Corretto)** — I used the AWS-friendly distro since I knew I'd be deploying to EC2 later.
+   - macOS: `brew install --cask corretto21`
+   - Verify: `java -version` → should print a 21-based version.
+2. **Maven**: `brew install maven`, then verify with `mvn -version`.
+3. **IntelliJ IDEA Community Edition** — opened this folder directly as a Maven project; it auto-detects `pom.xml`.
+
+## How to run it
+
 ```bash
 cd java-aws-projects/java/project-0-setup-warmup
 mvn -q compile exec:java
 ```
-You should see the demo in `Main.java` run. If it compiles and prints, your toolchain works.
 
-## Milestone 2 — Build BankAccount yourself (~2–3 hrs)
-Open `src/main/java/com/mursalin/warmup/BankAccount.java` (a stub) and implement it:
-- private fields: `owner` (String), `balance` (double, or better `long` cents).
-- constructor that sets the owner and a starting balance.
-- `deposit(double amount)` — reject non-positive amounts with `IllegalArgumentException`.
-- `withdraw(double amount)` — reject overdrafts (`balance - amount < 0`) with an exception.
-- `getBalance()` and a `toString()` override.
-- Override `equals()` and `hashCode()` based on `owner` (you'll feel why in Project 1).
+Expected output: `Alice` after a deposit and withdrawal (balance 120.0), a message confirming Bob's overdraft attempt was rejected, and a demonstration that `==` returns `false` for two distinct `BankAccount` objects while `.equals()` returns `true` when they share an owner.
 
-Then wire a small demo in `Main.java`: create two accounts, do some deposits/withdrawals, try an illegal one inside a `try/catch`, print results.
+## What this taught me
 
-✅ **Project 0 cleared when:**
-- [ ] Toolchain installed (`java`/`mvn` are 21).
-- [ ] Starter runs via `mvn exec:java`.
-- [ ] `BankAccount` rejects overdrafts and non-positive amounts.
-- [ ] You overrode `equals()`/`hashCode()` and can explain *why `==` wouldn't work*.
-- [ ] Pushed to GitHub with this checklist ticked.
+| Python instinct | What I actually hit in Java |
+|---|---|
+| `self.balance` | private fields + methods, everything lives inside a class |
+| duck typing | static types — the compiler checks you, not the runtime |
+| `a == b` for value equality | `==` is identity; `.equals()` is what you override for value equality |
+| `print(...)` | `System.out.println(...)` |
+| `python main.py` | compile + run through Maven |
+| raising `ValueError` | `throw new IllegalArgumentException(...)` |
 
-## Stretch (optional)
-- Make `BankAccount` immutable (final fields, return a new account on each operation) and notice how that changes the design — immutability is a big concurrency theme later.
-
-## Interview seeds this plants
-- "What's the difference between `==` and `.equals()` in Java?"
-- "Why do `equals()` and `hashCode()` have to be overridden together?"
-- "Coming from Python, what surprised you about Java?" ← have a crisp, honest answer after this week.
-
-## Resources
-- Amigoscode — "Java Tutorial for Beginners" (syntax map in one sitting).
-- Coding with John — "equals() and hashCode()" (do this before Milestone 2's equals task).
-- Oracle Dev.java "Getting Started" trail.
-
-➡️ **Next:** [Project 1 — Cheque Processing CLI](../project-1-cheque-cli/README.md)
+The concrete lesson that stuck: `equals()` and `hashCode()` have to be overridden together, because collections like `HashMap`/`HashSet` use `hashCode()` first to find the right bucket, then `equals()` to confirm a match inside it — override one without the other and lookups silently break. I felt this directly in Project 1, where duplicate-cheque-id detection depends on it.
