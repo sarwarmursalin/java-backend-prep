@@ -1,6 +1,6 @@
 # Fraud Lakehouse — Spark + Iceberg mini-project
 
-**Why this exists:** built to close a real gap for the the target company's job description — the JD names Spark/Iceberg/Hudi/Hadoop directly, and before this project none of it was hands-on. This is a revision doc, not a portfolio blurb — it's written so *future-you*, right before an interview, can re-read it and remember both the concepts and the real bugs hit while building it.
+**Why this exists:** a hands-on build to get real experience with Spark and Iceberg beyond reading about them — a data lakehouse pipeline over synthetic fraud-labeled transaction data. This doubles as a revision doc: written so *future-you* can re-read it and remember both the concepts and the real bugs hit while building it.
 
 ---
 
@@ -76,7 +76,7 @@ A real fraud-detection heuristic from the PaySim literature: flag `TRANSFER`/`CA
 
 ---
 
-## 4. Real debugging detours (these are genuinely good interview stories)
+## 4. Real debugging detours
 
 ### Detour 1 — port conflict with a leftover process
 `docker compose up` failed: `port 8080 already in use`. Root cause: my own **Document API from a separate Java project** was still running in the background on port 8080 (default Spring Boot port), left over from earlier testing. Fixed by finding the process (`lsof -nP -iTCP:8080 -sTCP:LISTEN`), identifying it (`ps -p <pid>`), and killing it. Lesson: always check *what* is holding a port before assuming the new service is broken.
@@ -114,10 +114,10 @@ docker exec spark-iceberg python3 /home/iceberg/src/check_snapshots.py
 
 ---
 
-## 6. Interview talking points
+## 6. What this project demonstrates
 
-- **"Have you used Spark/Iceberg?"** — yes, hands-on: built a full pipeline (load → transform → evaluate) against a 6.3M-row dataset, plus specifically demonstrated Iceberg's schema evolution and time travel with real before/after query output.
-- **"Tell me about a production-style issue you debugged"** — any of the four detours above; the OOM one (Detour 2) is probably the strongest, since it's a genuine resource-sizing diagnosis from a real stack trace, not a typo fix.
-- **"How do you evaluate whether a rule/model is any good?"** — the Milestone 4 confusion matrix: don't just eyeball a few rows, check real precision/recall against ground truth.
-- **"Why Iceberg over plain Parquet?"** — the Milestone 3 result: added a column with zero downtime, and proved old snapshots don't retroactively gain that column — schema is versioned data, not just a side detail.
-- **AI-assisted development** REMOVED_TEXT_PLACEHOLDER — this whole project was built working iteratively with an AI assistant: real root-causing of real errors (stack traces read, not guessed at), not blindly accepting generated code — a legitimate example of the practice the JD asks about.
+- **Hands-on Spark/Iceberg** — a full pipeline (load → transform → evaluate) against a 6.3M-row dataset, plus schema evolution and time travel demonstrated with real before/after query output.
+- **Debugging production-style issues** — any of the four detours above; the OOM one (Detour 2) is the strongest, a genuine resource-sizing diagnosis from a real stack trace, not a typo fix.
+- **Evaluating whether a rule/model is any good** — the Milestone 4 confusion matrix: don't just eyeball a few rows, check real precision/recall against ground truth.
+- **Why Iceberg over plain Parquet** — the Milestone 3 result: added a column with zero downtime, and proved old snapshots don't retroactively gain that column — schema is versioned data, not just a side detail.
+- **AI-assisted development** — this whole project was built working iteratively with an AI assistant: real root-causing of real errors (stack traces read, not guessed at), not blindly accepting generated code.
